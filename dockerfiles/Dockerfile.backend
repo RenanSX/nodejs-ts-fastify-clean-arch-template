@@ -1,0 +1,29 @@
+# Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Release
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/package.json /app/
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/tsconfig-paths-dist.js /app/tsconfig.json ./
+
+RUN addgroup -S appuser && adduser -S appuser -G appuser \
+    && chown -R appuser:appuser /app/ \
+    && chmod 777 /app/
+
+USER appuser
+
+EXPOSE 3333
+
+CMD ["npm", "run", "dev"]
+
